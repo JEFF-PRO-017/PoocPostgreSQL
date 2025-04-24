@@ -1,79 +1,4 @@
-#version: '3.1'
-#
-#services:
-#  postgres:
-#    image: postgres:15
-#    container_name: postgres_data
-#    restart: always
-#    environment:
-#      POSTGRES_PASSWORD: postgres
-#      POSTGRES_DB: people
-#    ports:
-#      - "5433:5432"
-
-
-
-version: '3.8'
-
 services:
-  # PostgreSQL
-#  postgres:
-#    image: postgres:15-alpine
-#    container_name: postgres
-#    environment:
-#      POSTGRES_USER: postgres
-#      POSTGRES_PASSWORD: postgres
-#      POSTGRES_DB: postgres
-#      POSTGRES_MULTIPLE_DATABASES: keycloak-db
-#    ports:
-#      - "5434:5432"
-#    volumes:
-#      - postgres_data:/var/lib/postgresql/data
-#      - ./init-db.sh:/docker-entrypoint-initdb.d/init-db.sh
-#    healthcheck:
-#      test: [ "CMD-SHELL", "pg_isready -U postgres" ]
-#      interval: 10s
-#      timeout: 5s
-#      retries: 5
-
-  # Keycloak avec PostgreSQL
-#  keycloak:
-#    image: quay.io/keycloak/keycloak:22.0
-#    container_name: keycloak
-#    command: start-dev
-#    environment:
-#      KC_DB: postgres
-#      KC_DB_URL: jdbc:postgresql://postgres:5432/keycloak-db
-#      KC_DB_USERNAME: postgres
-#      KC_DB_PASSWORD: postgres
-#      KEYCLOAK_ADMIN: admin
-#      KEYCLOAK_ADMIN_PASSWORD: admin
-#    ports:
-#      - "8080:8080"
-#    depends_on:
-#      postgres:
-#        condition: service_healthy
-
-#  # Redis et Redis Insight
-#  redis:
-#    image: redis:7-alpine
-#    container_name: redis
-#    ports:
-#      - "6379:6379"
-#    volumes:
-#      - redis_data:/data
-#
-#  redis-insight:
-#    image: redislabs/redisinsight:latest
-#    container_name: redis-insight
-#    ports:
-#      - "8001:8001"
-#    volumes:
-#      - redis_insight_data:/db
-#    depends_on:
-#      - redis
-
-  # Kafka avec Zookeeper
   zookeeper:
     image: confluentinc/cp-zookeeper:7.4.0
     container_name: zookeeper
@@ -115,10 +40,49 @@ services:
     depends_on:
       - kafka
 
+  # Cassandra
+  cassandra:
+    image: cassandra:latest
+    container_name: cassandra
+    ports:
+      - "9042:9042"
+    environment:
+      CASSANDRA_SEEDS: cassandra
+      CASSANDRA_USER: cassandra
+      CASSANDRA_PASSWORD: cassandra
+      CASSANDRA_PASSWORD_SEEDER: "yes"
+    volumes:
+      - cassandra-data:/var/lib/cassandra
+    networks:
+      cassandra-net:
+        aliases:
+          - cassandra
+    restart: always
+
+  cassandra-web:
+      image: dcagatay/cassandra-web:latest
+      container_name: cassandra-web
+      depends_on:
+        - cassandra
+      ports:
+        - "3003:3000"
+      environment:
+        CASSANDRA_HOST_IPS: cassandra
+        CASSANDRA_PORT: 9042
+        CASSANDRA_USER: cassandra
+        CASSANDRA_PASSWORD: cassandra
+      networks:
+        - cassandra-net
+      restart: always
+
+networks:
+    cassandra-net:
+      driver: bridge
+
+
 volumes:
-#  postgres_data:
-#  redis_data:
-#  redis_insight_data:
   zookeeper_data:
   zookeeper_log:
   kafka_data:
+  cassandra-data:
+
